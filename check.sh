@@ -16,7 +16,7 @@ timeout = 5  # curl 命令超时时间（秒）
 output_with_latency = False  # True 输出 IP + 延迟，False 只输出 IP
 
 # 允许的 HTTP 状态码
-allowed_statuses = {200, 301, 302, 403}
+allowed_statuses = {200, 204, 301, 302, 403}
 
 # 检测 Cloudflare 的响应头关键字
 cloudflare_header = "cf-ray"
