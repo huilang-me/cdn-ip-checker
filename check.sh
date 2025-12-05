@@ -10,6 +10,17 @@ import time
 ip_file = "ips.txt"
 output_file = "valid_ips.txt"
 
+# 线程和超时配置
+max_threads = 100
+timeout = 5  # curl 命令超时时间（秒）
+output_with_latency = False  # True 输出 IP + 延迟，False 只输出 IP
+
+# 允许的 HTTP 状态码
+allowed_statuses = {200, 301, 302, 403}
+
+# 检测 Cloudflare 的响应头关键字
+cloudflare_header = "cf-ray"
+
 # 目标域名列表 (随机选择一个进行测试)
 domains = [
     "www.cloudflare.com",
@@ -28,10 +39,6 @@ domains = [
     "wall.alphacoders.com",
     "discord.com",
 ]
-
-max_threads = 100
-timeout = 5  # curl 命令超时时间（秒）
-output_with_latency = False  # True 输出 IP + 延迟，False 只输出 IP
 
 # --------------------------------------
 task_queue = queue.Queue()
@@ -55,9 +62,9 @@ def parse_status(headers):
     return None
 
 def is_cloudflare(headers):
-    """检查是否 Cloudflare (通过 cf-ray 头部)"""
+    """检查是否 Cloudflare (通过配置的 cf-ray 头部)"""
     for line in headers:
-        if line.lower().startswith("cf-ray:"):
+        if line.lower().startswith(f"{cloudflare_header.lower()}:"):
             return True
     return False
 
@@ -87,7 +94,7 @@ def worker():
             status = parse_status(headers)
             cost = round((end - start) * 1000, 2)
 
-            if proc.returncode == 0 and status in (200, 301, 403) and is_cloudflare(headers):
+            if proc.returncode == 0 and status in allowed_statuses and is_cloudflare(headers):
                 with lock:
                     result_list.append((ip, cost))
                 print(f"[OK] {ip} | {domain} | {status} | {cost} ms")
