@@ -50,8 +50,8 @@ def is_cloudflare(headers_lines):
     # 简单判断：Server 头含 cloudflare 或 CF-RAY 存在
     for line in headers_lines:
         line = line.strip()
-        if line.lower().startswith("server:") and "cloudflare" in line.lower():
-            return True
+        # if line.lower().startswith("server:") and "cloudflare" in line.lower():
+        #     return True
         if line.startswith("CF-RAY:") or line.startswith("cf-ray:"):
             return True
     return False
