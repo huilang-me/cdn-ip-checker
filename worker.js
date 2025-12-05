@@ -4,6 +4,11 @@ const proxies = [
   'vless://path@ip:443?encryption=none&security=tls&type=ws&host=host&path=%2F23path',
   'trojan://path@ip:443?encryption=none&security=tls&type=ws&host=host&path=%2F23path'
 ]
+// 优选域名
+const DOMAINS = [
+  'www.shopify.com',
+  'cf-cname.xingpingcn.top'
+]
 
 addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request))
@@ -35,7 +40,9 @@ async function handleRequest(request) {
     const resp = await fetch(fetchUrl)
     if (!resp.ok) throw new Error('Failed to fetch IP list')
     const ipText = await resp.text()
-    const ips = ipText.split(/\r?\n/).filter(line => line.trim())
+    let ips = ipText.split(/\r?\n/).filter(line => line.trim())
+    // 追加优选域名
+    ips = [...DOMAINS, ...ips]
 
     // 替换 IP 并在末尾追加 #ip
     const allProxiesText = ips.map(ip => {
@@ -59,3 +66,4 @@ async function handleRequest(request) {
     return new Response(err.message, { status: 500 })
   }
 }
+
