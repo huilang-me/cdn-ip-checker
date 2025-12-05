@@ -30,7 +30,7 @@ domains = [
 ]
 
 max_threads = 100
-timeout = 3
+timeout = 5
 
 # --------------------------------------
 task_queue = queue.Queue()
