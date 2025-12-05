@@ -61,6 +61,11 @@ def worker():
             if resp.status_code != 200:
                 # GET 流模式 fallback
                 resp = requests.get(url, headers=headers, timeout=timeout, verify=False, stream=True)
+            
+            # ✅ 打印返回头
+            print(f"\n--- {ip} -> {domain} ---")
+            for k, v in resp.headers.items():
+                print(f"{k}: {v}")
 
             if resp.status_code == 200 and is_cloudflare(resp.headers):
                 print(f"Cloudflare OK: {ip} -> {domain}")
