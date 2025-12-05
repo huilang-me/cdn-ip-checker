@@ -8,7 +8,7 @@ import time
 # ---------- 配置 ----------
 ip_file = "ip.txt"
 output_file = "valid_ips.txt"
-domains = ["www.cloudflare.com", "www.shopify.com", "ip.sb", "japan.com", "visa.com.hk,"www.visa.com.tw"]  # 可随机选择
+domains = ["www.cloudflare.com", "www.shopify.com", "ip.sb", "japan.com", "visa.com.hk","www.visa.com.tw"]  # 可随机选择
 max_threads = 10   # 并发线程数
 timeout = 5        # 请求超时
 keyword = "Example Domain"  # 判断响应是否成功的关键字
