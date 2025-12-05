@@ -1,5 +1,5 @@
 const VERIFY_PATH = '/uuid' // 请求验证路径
-const IP_LIST_URL = 'https://raw.githubusercontent.com/huilang-me/cdn-ip-checker/refs/heads/main/valid_ips.txt' // IP 列表 URL
+const IP_LIST_URL = 'https://xxx/valid_ips.txt' // 你自己的IP 列表 URL
 const proxies = [
   'vless://path@ip:443?encryption=none&security=tls&type=ws&host=host&path=%2F23path',
   'trojan://path@ip:443?encryption=none&security=tls&type=ws&host=host&path=%2F23path'
