@@ -14,9 +14,19 @@ domains = [
     "ip.sb",
     "japan.com",
     "visa.com.hk",
-    "www.visa.com.tw"
+    "www.visa.com.tw",
+    "www.visa.co.jp",
+    "www.visakorea.com",
+    "www.visakorea.com",
+    "www.gco.gov.qa",
+    "www.gov.se",
+    "www.gov.ua",
+    "store.ubi.com",
+    "www.nexusmods.com",
+    "wall.alphacoders.com",
+    "discord.com",
 ]  # 可以随机选择
-max_threads = 20
+max_threads = 100
 timeout = 5  # curl 超时（秒）
 
 q = queue.Queue()
