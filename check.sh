@@ -66,9 +66,9 @@ def worker():
             headers = proc.stdout.splitlines()
 
             # 打印完整返回头
-            print(f"\n--- {ip} -> {domain} ---")
-            for h in headers:
-                print(h)
+            # print(f"\n--- {ip} -> {domain} ---")
+            # for h in headers:
+            #     print(h)
 
             if is_cloudflare(headers):
                 print(f"Cloudflare OK: {ip} -> {domain}")
