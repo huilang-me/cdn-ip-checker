@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-import requests
+import subprocess
 import threading
 import queue
 import random
 import ipaddress
-import urllib3
 
 # ---------- 配置 ----------
 ip_file = "ip.txt"
@@ -18,13 +17,10 @@ domains = [
     "www.visa.com.tw"
 ]  # 可以随机选择
 max_threads = 20
-timeout = 5
+timeout = 5  # curl 超时（秒）
 
 q = queue.Queue()
 results = []
-
-# ---------- 屏蔽 HTTPS 警告 ----------
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ---------- 读取 IP 文件并展开 ----------
 with open(ip_file) as f:
@@ -39,13 +35,16 @@ with open(ip_file) as f:
         except ValueError:
             print(f"无效 IP 或段: {line}")
 
-# ---------- 判断是否 Cloudflare CDN ----------
-def is_cloudflare(headers):
-    server = headers.get("Server", "").lower()
-    cf_ray = headers.get("CF-RAY")
-    cf_cache = headers.get("CF-Cache-Status")
-    # 只要 Server 是 cloudflare 或存在 CF-RAY 就认为是 Cloudflare 节点
-    return "cloudflare" in server or cf_ray is not None
+# ---------- 判断 Cloudflare CDN ----------
+def is_cloudflare(headers_lines):
+    # 简单判断：Server 头含 cloudflare 或 CF-RAY 存在
+    for line in headers_lines:
+        line = line.strip()
+        if line.lower().startswith("server:") and "cloudflare" in line.lower():
+            return True
+        if line.startswith("CF-RAY:") or line.startswith("cf-ray:"):
+            return True
+    return False
 
 # ---------- 线程函数 ----------
 def worker():
@@ -53,26 +52,30 @@ def worker():
         ip = q.get()
         domain = random.choice(domains)
         try:
-            url = f"https://{domain}"
-            headers = {"Host": domain}
+            # curl 命令，绑定 IP 并打印响应头
+            cmd = [
+                "curl",
+                "-s",                 # 静默
+                "-D", "-",            # 打印响应头
+                "-o", "/dev/null",    # 不输出 body
+                "-m", str(timeout),   # 超时
+                "--resolve", f"{domain}:443:{ip}",
+                f"https://{domain}/"
+            ]
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+            headers = proc.stdout.splitlines()
 
-            # HEAD 请求优先
-            resp = requests.head(url, headers=headers, timeout=timeout, verify=False)
-            if resp.status_code != 200:
-                # GET 流模式 fallback
-                resp = requests.get(url, headers=headers, timeout=timeout, verify=False, stream=True)
-            
-            # ✅ 打印返回头
+            # 打印完整返回头
             print(f"\n--- {ip} -> {domain} ---")
-            for k, v in resp.headers.items():
-                print(f"{k}: {v}")
+            for h in headers:
+                print(h)
 
-            if resp.status_code == 200 and is_cloudflare(resp.headers):
+            if is_cloudflare(headers):
                 print(f"Cloudflare OK: {ip} -> {domain}")
                 results.append(ip)
             else:
-                print(f"FAIL: {ip} -> {domain} (status {resp.status_code})")
-            resp.close()
+                print(f"FAIL: {ip} -> {domain}")
+
         except Exception as e:
             print(f"ERROR: {ip} -> {domain} : {e}")
         finally:
@@ -93,4 +96,4 @@ with open(output_file, "w") as f:
     for ip in results:
         f.write(ip + "\n")
 
-print(f"检测完成，可用 Cloudflare IP 写入 {output_file}")
+print(f"\n检测完成，可用 Cloudflare IP 写入 {output_file}")
