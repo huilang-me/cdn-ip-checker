@@ -71,6 +71,7 @@ def worker():
                 # "-D", "-",            # 打印响应头
                 # "-o", "/dev/null",    # 不输出 body
                 "-I",           # 发送 HEAD 请求，只返回响应头（代替 -D - 和 -o /dev/null）
+                "--fail-early", # 遇到 4xx/5xx 错误时快速失败
                 "-m", str(timeout),   # 超时
                 "--resolve", f"{domain}:443:{ip}",
                 f"https://{domain}/"
