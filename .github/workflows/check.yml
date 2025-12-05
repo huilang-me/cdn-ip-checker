@@ -1,0 +1,27 @@
+name: Check CDN IPs
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  check-ip:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run check script
+        run: |
+          chmod +x check.sh
+          ./check.sh
+
+      - name: Commit results
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add valid_ips.txt
+          git commit -m "Update valid IPs" || echo "No changes"
+          git push
