@@ -27,7 +27,7 @@ domains = [
     "discord.com",
 ]  # 可以随机选择
 max_threads = 100
-timeout = 5  # curl 超时（秒）
+timeout = 3  # curl 超时（秒）
 
 q = queue.Queue()
 results = []
@@ -61,33 +61,42 @@ def worker():
     while not q.empty():
         ip = q.get()
         domain = random.choice(domains)
+        
+        # 优化：只在成功或失败时打印，减少 I/O 
+        
         try:
-            # curl 命令，绑定 IP 并打印响应头
             cmd = [
                 "curl",
                 "-s",                 # 静默
-                "-D", "-",            # 打印响应头
-                "-o", "/dev/null",    # 不输出 body
+                # "-D", "-",            # 打印响应头
+                # "-o", "/dev/null",    # 不输出 body
+                "-I",           # 发送 HEAD 请求，只返回响应头（代替 -D - 和 -o /dev/null）
                 "-m", str(timeout),   # 超时
                 "--resolve", f"{domain}:443:{ip}",
                 f"https://{domain}/"
             ]
-            proc = subprocess.run(cmd, capture_output=True, text=True)
+            
+            # 使用 check=True 来确保非零退出代码时抛出异常
+            proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
             headers = proc.stdout.splitlines()
 
-            # 打印完整返回头
-            # print(f"\n--- {ip} -> {domain} ---")
-            # for h in headers:
-            #     print(h)
-
-            if is_cloudflare(headers):
-                print(f"Cloudflare OK: {ip} -> {domain}")
-                results.append(ip)
+            # 检查 curl 是否成功（返回码 0）
+            if proc.returncode == 0 and headers:
+                if is_cloudflare(headers):
+                    # 仅在成功时打印
+                    print(f"Cloudflare OK: {ip} -> {domain}")
+                    results.append(ip)
+                else:
+                    # 仅在不满足 Cloudflare 条件时打印失败
+                    print(f"FAIL: {ip} -> {domain}")
             else:
-                print(f"FAIL: {ip} -> {domain}")
+                # 打印 curl 失败的原因（如超时、连接错误等）
+                error_msg = proc.stderr.strip() if proc.stderr else "Connection error/Timeout"
+                print(f"CURL ERROR ({proc.returncode}): {ip} -> {domain} : {error_msg}")
 
         except Exception as e:
-            print(f"ERROR: {ip} -> {domain} : {e}")
+            # 捕获其他 Python 级别的异常
+            print(f"PYTHON ERROR: {ip} -> {domain} : {e}")
         finally:
             q.task_done()
 
