@@ -6,11 +6,10 @@ import random
 import ipaddress
 import time
 
-# ---------------- 配置 ----------------
+# ---------------- 配置 (可调整区域) ----------------
 ip_file = "ip.txt"
 output_file = "valid_ips.txt"
 
-# 目标域名列表 (随机选择一个进行测试)
 domains = [
     "www.cloudflare.com",
     "www.shopify.com",
@@ -33,10 +32,14 @@ domains = [
 max_threads = 100
 timeout = 5 # curl 命令的超时时间
 
+# --- 验证条件 ---
+CF_RAY_HEADER = "cf-ray:" # 检查 Cloudflare 存在的头部标识（小写）
+SUCCESS_STATUS_CODES = (200, 301, 403) # 视为成功的 HTTP 状态码
+
 # --------------------------------------
 task_queue = queue.Queue()
 result_list = []
-lock = threading.Lock() # 用于保护 result_list 的互斥锁
+lock = threading.Lock()
 
 
 # ---------------- 工具函数 ----------------
@@ -44,7 +47,6 @@ def parse_status(headers):
     """解析 HTTP 状态码"""
     if not headers:
         return None
-    # 查找并处理第一行 (e.g., HTTP/1.1 200 OK)
     line = headers[0].strip()
     if line.startswith("HTTP/"):
         try:
@@ -52,19 +54,20 @@ def parse_status(headers):
             if len(parts) >= 2:
                 return int(parts[1])
         except ValueError:
-            pass # 忽略非数字的状态码
+            pass
     return None
 
 
 def is_cloudflare(headers):
-    """检查是否 Cloudflare (通过 cf-ray 头部)"""
+    """检查是否包含 Cloudflare 标识的头部"""
     for line in headers:
-        if line.lower().startswith("cf-ray:"):
+        # 使用配置中的 CF_RAY_HEADER 变量进行检查
+        if line.lower().startswith(CF_RAY_HEADER):
             return True
     return False
 
 
-# ---------------- 线程 worker (改进版) ----------------
+# ---------------- 线程 worker ----------------
 def worker():
     """工作线程：持续从队列中取出 IP 进行测试，直到收到 None 信号"""
     while True:
@@ -82,16 +85,15 @@ def worker():
             # 构建 curl 命令
             cmd = [
                 "curl",
-                "-s",             # 静默模式
-                "-I",             # 只获取头部
-                "--fail-early",   # 遇到错误提前失败
-                "-m", str(timeout), # 连接/传输超时
-                "--resolve", f"{domain}:443:{ip}", # 强制解析域名到该 IP
+                "-s",
+                "-I",
+                "--fail-early",
+                "-m", str(timeout),
+                "--resolve", f"{domain}:443:{ip}",
                 f"https://{domain}/"
             ]
 
             start = time.time()
-            # 设置外部进程的超时时间，略大于 curl 内部超时，防止僵尸进程
             proc = subprocess.run(
                 cmd, 
                 capture_output=True, 
@@ -104,13 +106,12 @@ def worker():
             status = parse_status(headers)
             cost = round((end - start) * 1000, 2)
             
-            # 判断成功条件：返回码为 0，状态码 OK，且包含 Cloudflare 标识
-            if proc.returncode == 0 and status in (200, 301, 403) and is_cloudflare(headers):
+            # 判断成功条件：返回码为 0，状态码在配置的成功列表中，且包含 Cloudflare 标识
+            if proc.returncode == 0 and status in SUCCESS_STATUS_CODES and is_cloudflare(headers):
                 with lock:
                     result_list.append((ip, cost))
                 print(f"[OK] {ip} | {domain} | {status} | {cost} ms")
             else:
-                # 失败时打印更详细的错误信息
                 error_details = proc.stderr.strip() if proc.stderr else ""
                 print(f"[FAIL] {ip} | {domain} | status={status} | code={proc.returncode} | err={error_details[:50]}")
 
@@ -147,14 +148,13 @@ except FileNotFoundError:
 
 print(f"--- 准备扫描 {total_ips} 个 IP 地址，使用 {max_threads} 个线程 ---")
 
-# ---------------- 启动线程 ----------------
+# ---------------- 启动和优雅停止 ----------------
 threads = []
 for _ in range(max_threads):
     t = threading.Thread(target=worker)
     t.start()
     threads.append(t)
 
-# ---------------- 等待和优雅停止 ----------------
 # 阻塞主线程，等待队列中的所有 IP 任务处理完毕
 task_queue.join()
 
@@ -162,7 +162,7 @@ task_queue.join()
 for _ in range(max_threads):
     task_queue.put(None)
 
-# 再次等待，确保所有 worker 线程优雅退出
+# 等待所有线程退出
 for t in threads:
     t.join()
 
@@ -173,8 +173,7 @@ result_list.sort(key=lambda x: x[1])
 
 with open(output_file, "w") as f:
     for ip, cost in result_list:
-        # 可以选择输出 IP 和延迟，或者只输出 IP
-        # f.write(f"{ip}\t{cost}ms\n") 
+        # 只输出 IP
         f.write(ip + "\n")
 
 print(f"\n=======================================================")
