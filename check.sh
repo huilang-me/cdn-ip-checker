@@ -83,7 +83,7 @@ def worker():
             headers = proc.stdout.splitlines()
             status = parse_status(headers)
 
-            if proc.returncode == 0 and status == 200 and is_cloudflare(headers):
+            if proc.returncode == 0 and status in (200, 403) and is_cloudflare(headers):
                 cost = round((end - start) * 1000, 2)
 
                 with lock:
