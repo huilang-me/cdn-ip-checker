@@ -7,7 +7,14 @@ const proxies = [
 // 优选域名
 const DOMAINS = [
   'www.shopify.com',
-  'cf-cname.xingpingcn.top'
+  'cf-cname.xingpingcn.top',
+  'www.visa.cn',
+  'mfa.gov.ua',
+  'store.ubi.com',
+  'staticdelivery.nexusmods.com',
+  'time.is',
+  'icook.hk',
+  'icook.tw',
 ]
 
 addEventListener('fetch', event => {
